@@ -1,7 +1,7 @@
 # For more information: https://laravel.com/docs/sail
 version: '3'
 services:
-    laravel.test:
+    laravel:
         build:
             context: ./vendor/laravel/sail/runtimes/8.0
             dockerfile: Dockerfile
@@ -18,43 +18,37 @@ services:
         networks:
             - sail
         depends_on:
-            - mysql
-            - redis
+            - pgsql
             - selenium
-    mysql:
-        image: 'mysql:8.0'
+    pgsql:
+        image: 'postgres:13'
         ports:
-            - '${FORWARD_DB_PORT:-3306}:3306'
+            - '${FORWARD_DB_PORT:-5432}:5432'
         environment:
-            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
-            MYSQL_DATABASE: '${DB_DATABASE}'
-            MYSQL_USER: '${DB_USERNAME}'
-            MYSQL_PASSWORD: '${DB_PASSWORD}'
-            MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+            PGPASSWORD: '${DB_PASSWORD:-secret}'
+            POSTGRES_DB: '${DB_DATABASE}'
+            POSTGRES_USER: '${DB_USERNAME}'
+            POSTGRES_PASSWORD: '${DB_PASSWORD:-secret}'
         volumes:
-            - 'sailmysql:/var/lib/mysql'
+            - 'sailpgsql:/var/lib/postgresql/data'
         networks:
             - sail
         healthcheck:
-          test: ["CMD", "mysqladmin", "ping", "-p${DB_PASSWORD}"]
-    redis:
-        image: 'redis:alpine'
+          test: ["CMD", "pg_isready", "-q", "-d", "${DB_DATABASE}", "-U", "${DB_USERNAME}"]
+    minio:
+        image: 'minio/minio:latest'
         ports:
-            - '${FORWARD_REDIS_PORT:-6379}:6379'
+            - '${FORWARD_MINIO_PORT:-9000}:9000'
+        environment:
+            MINIO_ROOT_USER: 'sail'
+            MINIO_ROOT_PASSWORD: 'password'
         volumes:
-            - 'sailredis:/data'
+            - 'sailminio:/data/minio'
         networks:
             - sail
+        command: minio server /data/minio
         healthcheck:
-          test: ["CMD", "redis-cli", "ping"]
-    meilisearch:
-        image: 'getmeili/meilisearch:latest'
-        ports:
-            - '${FORWARD_MEILISEARCH_PORT:-7700}:7700'
-        volumes:
-            - 'sailmeilisearch:/data.ms'
-        networks:
-            - sail
+          test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
     mailhog:
         image: 'mailhog/mailhog:latest'
         ports:
@@ -72,9 +66,7 @@ networks:
     sail:
         driver: bridge
 volumes:
-    sailmysql:
+    sailpgsql:
         driver: local
-    sailredis:
-        driver: local
-    sailmeilisearch:
+    sailminio:
         driver: local
