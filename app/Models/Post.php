@@ -14,7 +14,18 @@ class Post extends Model
      *
      * @return Illuminate\Database\Eloquent\Relations\BelongsTo
      */
-    public function author() {
+    public function author()
+    {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Tags attached to this post.
+     *
+     * @return Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function tags()
+    {
+        return $this->belongsToMany(Tag::class, 'post_tags');
     }
 }
